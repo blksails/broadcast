@@ -12,7 +12,7 @@
 
 ## 安装
 bash
-go get pkg.blksails.net/pkg/broadcast
+go get pkg.blksails.net/x/pkg/broadcast
 
 
 ## 基础用法
