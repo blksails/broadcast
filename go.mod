@@ -1,3 +1,3 @@
-module pkg.blksails.net/pkg/broadcast
+module pkg.blksails.net/broadcast
 
 go 1.23.3
