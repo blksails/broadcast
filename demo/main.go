@@ -6,7 +6,7 @@ import (
 	"time"
 	"unique"
 
-	"blksails.net/pkg/broadcast"
+	"pkg.blksails.net/x/broadcast"
 )
 
 // UserEvent 表示用户事件数据
@@ -34,13 +34,13 @@ func main() {
 	b := &broadcast.UniqueBroadcast[int, UserEvent]{}
 
 	// 添加事件处理器
-	b.Handle(func(signal string, event UserEvent) error {
+	b.Handle(func(signal string, event UserEvent, metadata map[string]interface{}) error {
 		fmt.Printf("[Handler 1] Signal: %s, UserID: %d, Action: %s\n",
 			signal, event.UserID, event.Action)
 		return nil
 	})
 
-	b.Handle(func(signal string, event UserEvent) error {
+	b.Handle(func(signal string, event UserEvent, metadata map[string]interface{}) error {
 		fmt.Printf("[Handler 2] Signal: %s, UserID: %d, Action: %s\n",
 			signal, event.UserID, event.Action)
 		return nil
@@ -84,14 +84,14 @@ func main() {
 	}
 
 	fmt.Println("\n广播 user_activity 信号:")
-	b.Broadcast("user_activity")
+	b.Broadcast("user_activity", nil)
 
 	// 取消监听某个事件
 	fmt.Println("\n取消监听 UserID=1 的事件:")
 	b.Unwatch("user_activity", events[0])
 
 	fmt.Println("\n再次广播 user_activity 信号:")
-	b.Broadcast("user_activity")
+	b.Broadcast("user_activity", nil)
 
 	// 演示并发处理
 	fmt.Println("\n=== 并发处理演示 ===")
@@ -121,7 +121,7 @@ func main() {
 			defer wg.Done()
 			time.Sleep(time.Millisecond * 50) // 给一些时间让监听器注册
 			fmt.Printf("\n并发广播 #%d:\n", i+1)
-			b.Broadcast("concurrent_activity")
+			b.Broadcast("concurrent_activity", nil)
 		}(i)
 	}
 
@@ -143,7 +143,7 @@ func main() {
 
 	for _, signal := range signals {
 		fmt.Printf("\n广播 %s 信号:\n", signal)
-		b.Broadcast(signal)
+		b.Broadcast(signal, nil)
 	}
 
 	// ... 在现有代码后添加 ...

@@ -5,7 +5,7 @@ import (
 	"unique"
 )
 
-type Handler[T comparable] func(signal string, data T) error
+type Handler[T comparable] func(signal string, data T, metadata map[string]interface{}) error
 
 type Broadcast[T comparable] struct {
 	mu        sync.RWMutex
@@ -80,7 +80,7 @@ func (b *Broadcast[T]) Unwatch(signal string, data T) {
 }
 
 // Broadcast 广播一个信号, 以触发所有监听该信号的处理器
-func (b *Broadcast[T]) Broadcast(signal string) {
+func (b *Broadcast[T]) Broadcast(signal string, metadata map[string]interface{}) {
 	b.mu.RLock()
 	listeners := b.listeners[signal]
 	handlers := b.handlers
@@ -88,7 +88,7 @@ func (b *Broadcast[T]) Broadcast(signal string) {
 
 	for _, handler := range handlers {
 		for _, data := range listeners {
-			_ = handler(signal, data.Value())
+			_ = handler(signal, data.Value(), metadata)
 		}
 	}
 }

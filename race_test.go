@@ -10,7 +10,7 @@ import (
 	"unique"
 )
 
-// 并发测试辅助结构体
+// TestData for concurrent testing
 type concurrentTestData struct {
 	ID    int
 	Value string
@@ -28,7 +28,7 @@ func (c *concurrentUniquer) Value() concurrentTestData {
 	return c.data
 }
 
-// TestRaceBroadcast_ConcurrentOperations 测试所有操作的并发安全性
+// TestRaceBroadcast_ConcurrentOperations tests thread safety of all operations
 func TestRaceBroadcast_ConcurrentOperations(t *testing.T) {
 	b := &UniqueBroadcast[int, concurrentTestData]{}
 	var wg sync.WaitGroup
@@ -37,16 +37,16 @@ func TestRaceBroadcast_ConcurrentOperations(t *testing.T) {
 		numOperations = 1000
 	)
 
-	// 添加多个处理器
+	// Add multiple handlers
 	handlerCounter := uint64(0)
 	for i := 0; i < 5; i++ {
-		b.Handle(func(signal string, data concurrentTestData) error {
+		b.Handle(func(signal string, data concurrentTestData, metadata map[string]interface{}) error {
 			atomic.AddUint64(&handlerCounter, 1)
 			return nil
 		})
 	}
 
-	// 并发执行 Watch、Unwatch 和 Broadcast 操作
+	// Concurrent execution of Watch, Unwatch and Broadcast operations
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(3)
 
@@ -61,7 +61,7 @@ func TestRaceBroadcast_ConcurrentOperations(t *testing.T) {
 					},
 				}
 				b.Watch("test", data)
-				time.Sleep(time.Microsecond) // 模拟真实场景的间隔
+				time.Sleep(time.Microsecond) // Simulate real-world delay
 			}
 		}(i)
 
@@ -84,7 +84,7 @@ func TestRaceBroadcast_ConcurrentOperations(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for j := 0; j < numOperations; j++ {
-				b.Broadcast("test")
+				b.Broadcast("test", nil)
 				time.Sleep(time.Microsecond)
 			}
 		}()
@@ -93,7 +93,7 @@ func TestRaceBroadcast_ConcurrentOperations(t *testing.T) {
 	wg.Wait()
 }
 
-// TestRaceBroadcast_MultipleSignals 测试多信号并发
+// TestRaceBroadcast_MultipleSignals tests concurrent operations with multiple signals
 func TestRaceBroadcast_MultipleSignals(t *testing.T) {
 	b := &UniqueBroadcast[int, concurrentTestData]{}
 	var wg sync.WaitGroup
@@ -105,18 +105,18 @@ func TestRaceBroadcast_MultipleSignals(t *testing.T) {
 		signals[i] = fmt.Sprintf("signal-%d", i)
 	}
 
-	// 添加处理器
+	// Add handler
 	handlerCalls := make(map[string]uint64)
 	handlerMutex := sync.RWMutex{}
 
-	b.Handle(func(signal string, data concurrentTestData) error {
+	b.Handle(func(signal string, data concurrentTestData, metadata map[string]interface{}) error {
 		handlerMutex.Lock()
 		handlerCalls[signal]++
 		handlerMutex.Unlock()
 		return nil
 	})
 
-	// 为每个信号启动并发操作
+	// Start concurrent operations for each signal
 	for _, signal := range signals {
 		wg.Add(3)
 
@@ -152,7 +152,7 @@ func TestRaceBroadcast_MultipleSignals(t *testing.T) {
 		go func(sig string) {
 			defer wg.Done()
 			for i := 0; i < numOperationsPerSignal; i++ {
-				b.Broadcast(sig)
+				b.Broadcast(sig, nil)
 				time.Sleep(time.Microsecond)
 			}
 		}(signal)
@@ -161,18 +161,18 @@ func TestRaceBroadcast_MultipleSignals(t *testing.T) {
 	wg.Wait()
 }
 
-// TestRaceBroadcast_HandlerModification 测试处理器并发修改
+// TestRaceBroadcast_HandlerModification tests concurrent handler modifications
 func TestRaceBroadcast_HandlerModification(t *testing.T) {
 	b := &UniqueBroadcast[int, concurrentTestData]{}
 	var wg sync.WaitGroup
 	const numOperations = 1000
 
-	// 并发添加和触发处理器
+	// Concurrent handler addition and triggering
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		for i := 0; i < numOperations; i++ {
-			b.Handle(func(signal string, data concurrentTestData) error {
+			b.Handle(func(signal string, data concurrentTestData, metadata map[string]interface{}) error {
 				return nil
 			})
 		}
@@ -188,29 +188,29 @@ func TestRaceBroadcast_HandlerModification(t *testing.T) {
 				},
 			}
 			b.Watch("test", data)
-			b.Broadcast("test")
+			b.Broadcast("test", nil)
 		}
 	}()
 
 	wg.Wait()
 }
 
-// TestRaceBroadcast_ListenerModification 测试监听器并发修改
+// TestRaceBroadcast_ListenerModification tests concurrent listener modifications
 func TestRaceBroadcast_ListenerModification(t *testing.T) {
 	b := &UniqueBroadcast[int, concurrentTestData]{}
 	var wg sync.WaitGroup
 	const numOperations = 1000
 
 	handlerCalled := uint64(0)
-	b.Handle(func(signal string, data concurrentTestData) error {
+	b.Handle(func(signal string, data concurrentTestData, metadata map[string]interface{}) error {
 		atomic.AddUint64(&handlerCalled, 1)
 		return nil
 	})
 
-	// 并发修改监听器和广播
+	// Concurrent modification of listeners and broadcasting
 	wg.Add(3)
 
-	// 添加监听器
+	// Add listeners
 	go func() {
 		defer wg.Done()
 		for i := 0; i < numOperations; i++ {
@@ -224,7 +224,7 @@ func TestRaceBroadcast_ListenerModification(t *testing.T) {
 		}
 	}()
 
-	// 移除监听器
+	// Remove listeners
 	go func() {
 		defer wg.Done()
 		for i := 0; i < numOperations; i++ {
@@ -238,11 +238,11 @@ func TestRaceBroadcast_ListenerModification(t *testing.T) {
 		}
 	}()
 
-	// ���播
+	// Broadcast
 	go func() {
 		defer wg.Done()
 		for i := 0; i < numOperations; i++ {
-			b.Broadcast("test")
+			b.Broadcast("test", nil)
 			time.Sleep(time.Microsecond)
 		}
 	}()

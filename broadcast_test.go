@@ -10,7 +10,7 @@ func TestBroadcast_Handle(t *testing.T) {
 	b := New[string]()
 
 	called := false
-	handler := func(signal string, data string) error {
+	handler := func(signal string, data string, metadata map[string]interface{}) error {
 		called = true
 		if signal != "test" || data != "data" {
 			t.Errorf("expected signal 'test' and data 'data', got signal '%s' and data '%s'", signal, data)
@@ -20,7 +20,7 @@ func TestBroadcast_Handle(t *testing.T) {
 
 	b.Handle(handler)
 	b.Watch("test", "data")
-	b.Broadcast("test")
+	b.Broadcast("test", nil)
 
 	if !called {
 		t.Error("handler was not called")
@@ -58,7 +58,7 @@ func TestBroadcast_Concurrent(t *testing.T) {
 	counter := 0
 	mutex := sync.Mutex{}
 
-	handler := func(signal string, data int) error {
+	handler := func(signal string, data int, metadata map[string]interface{}) error {
 		mutex.Lock()
 		counter++
 		mutex.Unlock()
@@ -76,7 +76,7 @@ func TestBroadcast_Concurrent(t *testing.T) {
 		}(i)
 		go func() {
 			defer wg.Done()
-			b.Broadcast("test")
+			b.Broadcast("test", nil)
 		}()
 	}
 
@@ -111,7 +111,7 @@ func BenchmarkBroadcast_Unwatch(b *testing.B) {
 
 func BenchmarkBroadcast_Broadcast(b *testing.B) {
 	br := New[string]()
-	handler := func(signal string, data string) error {
+	handler := func(signal string, data string, metadata map[string]interface{}) error {
 		return nil
 	}
 	br.Handle(handler)
@@ -120,13 +120,13 @@ func BenchmarkBroadcast_Broadcast(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		br.Broadcast("test")
+		br.Broadcast("test", nil)
 	}
 }
 
 func BenchmarkBroadcast_ConcurrentBroadcast(b *testing.B) {
 	br := New[string]()
-	handler := func(signal string, data string) error {
+	handler := func(signal string, data string, metadata map[string]interface{}) error {
 		return nil
 	}
 	br.Handle(handler)
@@ -138,7 +138,7 @@ func BenchmarkBroadcast_ConcurrentBroadcast(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			br.Broadcast("test")
+			br.Broadcast("test", nil)
 		}
 	})
 }
@@ -188,7 +188,7 @@ func TestBroadcast_HandlerExecution(t *testing.T) {
 
 			// Register handlers
 			for i := 0; i < tt.handlerCount; i++ {
-				b.Handle(func(signal string, data string) error {
+				b.Handle(func(signal string, data string, metadata map[string]interface{}) error {
 					calls++
 					return nil
 				})
@@ -201,7 +201,7 @@ func TestBroadcast_HandlerExecution(t *testing.T) {
 
 			// Broadcast all signals
 			for _, signal := range tt.signals {
-				b.Broadcast(signal)
+				b.Broadcast(signal, nil)
 			}
 
 			if calls != tt.expectedCalls {
@@ -314,24 +314,24 @@ func TestBroadcast_StructDataUniquer(t *testing.T) {
 	b := New[TestDataUniquer]()
 
 	data1 := TestDataUniquer{ID: 1, Name: "test1"}
-	data2 := TestDataUniquer{ID: 1, Name: "test1"} // 完全相同的数据
+	data2 := TestDataUniquer{ID: 1, Name: "test1"}
 	data3 := TestDataUniquer{ID: 2, Name: "test3"}
 
 	calls := 0
-	b.Handle(func(signal string, data TestDataUniquer) error {
+	b.Handle(func(signal string, data TestDataUniquer, metadata map[string]interface{}) error {
 		calls++
 		return nil
 	})
 
 	b.Watch("test", data1)
-	b.Watch("test", data2) // 应该被视为重复
+	b.Watch("test", data2)
 	b.Watch("test", data3)
 
 	if len(b.listeners["test"]) != 2 {
 		t.Errorf("expected 2 listeners, got %d", len(b.listeners["test"]))
 	}
 
-	b.Broadcast("test")
+	b.Broadcast("test", nil)
 	if calls != 2 {
 		t.Errorf("expected 2 handler calls, got %d", calls)
 	}
@@ -342,7 +342,7 @@ func TestBroadcast_StructDataHandling(t *testing.T) {
 	receivedData := make([]TestDataUniquer, 0)
 	mutex := sync.Mutex{}
 
-	handler := func(signal string, data TestDataUniquer) error {
+	handler := func(signal string, data TestDataUniquer, metadata map[string]interface{}) error {
 		mutex.Lock()
 		receivedData = append(receivedData, data)
 		mutex.Unlock()
@@ -367,7 +367,7 @@ func TestBroadcast_StructDataHandling(t *testing.T) {
 	}
 
 	// Broadcast and verify
-	b.Broadcast("test")
+	b.Broadcast("test", nil)
 
 	if len(receivedData) != len(testData) {
 		t.Errorf("expected %d received data, got %d", len(testData), len(receivedData))
@@ -392,7 +392,7 @@ func BenchmarkBroadcast_StructData(b *testing.B) {
 		},
 	}
 
-	handler := func(signal string, data *TestData) error {
+	handler := func(signal string, data *TestData, metadata map[string]interface{}) error {
 		return nil
 	}
 	br.Handle(handler)
@@ -400,7 +400,7 @@ func BenchmarkBroadcast_StructData(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		br.Broadcast("test")
+		br.Broadcast("test", nil)
 	}
 }
 

@@ -12,7 +12,7 @@ type Uniquer[K comparable, T any] interface {
 }
 
 // UniqueHandler 定义了处理 Uniquer 数据的处理器函数类型
-type UniqueHandler[K comparable, T any] func(signal string, data T) error
+type UniqueHandler[K comparable, T any] func(signal string, data T, metadata map[string]interface{}) error
 
 // UniqueBroadcast 实现了对 Uniquer 类型数据的广播功能
 type UniqueBroadcast[K comparable, T any] struct {
@@ -80,7 +80,7 @@ func (b *UniqueBroadcast[K, T]) Unwatch(signal string, data Uniquer[K, T]) {
 }
 
 // Broadcast 广播一个信号
-func (b *UniqueBroadcast[K, T]) Broadcast(signal string) {
+func (b *UniqueBroadcast[K, T]) Broadcast(signal string, metadata map[string]interface{}) {
 	// 获取快照以减少锁持有时间
 	b.mu.RLock()
 	listeners := make([]Uniquer[K, T], len(b.listeners[signal]))
@@ -94,7 +94,7 @@ func (b *UniqueBroadcast[K, T]) Broadcast(signal string) {
 		for _, data := range listeners {
 			// 创建数据副本以避免并发访问
 			dataCopy := data.Value()
-			_ = handler(signal, dataCopy)
+			_ = handler(signal, dataCopy, metadata)
 		}
 	}
 }

@@ -29,7 +29,7 @@ func TestUniqueBroadcast_Handle(t *testing.T) {
 	b := &UniqueBroadcast[int, TestUniqueData]{}
 
 	called := false
-	handler := func(signal string, data TestUniqueData) error {
+	handler := func(signal string, data TestUniqueData, metadata map[string]interface{}) error {
 		called = true
 		if signal != "test" || data.ID != 1 || data.Name != "test1" {
 			t.Errorf("unexpected signal or data: got signal=%s, data=%+v", signal, data)
@@ -39,7 +39,7 @@ func TestUniqueBroadcast_Handle(t *testing.T) {
 
 	b.Handle(handler)
 	b.Watch("test", &TestUniquer{data: TestUniqueData{ID: 1, Name: "test1"}})
-	b.Broadcast("test")
+	b.Broadcast("test", nil)
 
 	if !called {
 		t.Error("handler was not called")
@@ -84,7 +84,7 @@ func TestUniqueBroadcast_Concurrent(t *testing.T) {
 	counter := 0
 	mutex := sync.Mutex{}
 
-	handler := func(signal string, data TestUniqueData) error {
+	handler := func(signal string, data TestUniqueData, metadata map[string]interface{}) error {
 		mutex.Lock()
 		counter++
 		mutex.Unlock()
@@ -102,7 +102,7 @@ func TestUniqueBroadcast_Concurrent(t *testing.T) {
 		}(i)
 		go func() {
 			defer wg.Done()
-			b.Broadcast("test")
+			b.Broadcast("test", nil)
 		}()
 	}
 
@@ -120,7 +120,7 @@ func TestUniqueBroadcast_MultipleHandlers(t *testing.T) {
 
 	// Register multiple handlers
 	for i := 0; i < 3; i++ {
-		b.Handle(func(signal string, data TestUniqueData) error {
+		b.Handle(func(signal string, data TestUniqueData, metadata map[string]interface{}) error {
 			mutex.Lock()
 			calls++
 			mutex.Unlock()
@@ -130,7 +130,7 @@ func TestUniqueBroadcast_MultipleHandlers(t *testing.T) {
 
 	data := &TestUniquer{data: TestUniqueData{ID: 1, Name: "test"}}
 	b.Watch("test", data)
-	b.Broadcast("test")
+	b.Broadcast("test", nil)
 
 	if calls != 3 {
 		t.Errorf("expected 3 handler calls, got %d", calls)
@@ -319,7 +319,7 @@ func BenchmarkUniqueBroadcast_Unwatch(b *testing.B) {
 
 func BenchmarkUniqueBroadcast_Broadcast(b *testing.B) {
 	br := &UniqueBroadcast[int, TestUniqueData]{}
-	handler := func(signal string, data TestUniqueData) error {
+	handler := func(signal string, data TestUniqueData, metadata map[string]interface{}) error {
 		return nil
 	}
 	br.Handle(handler)
@@ -331,13 +331,13 @@ func BenchmarkUniqueBroadcast_Broadcast(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		br.Broadcast("test")
+		br.Broadcast("test", nil)
 	}
 }
 
 func BenchmarkUniqueBroadcast_ConcurrentBroadcast(b *testing.B) {
 	br := &UniqueBroadcast[int, TestUniqueData]{}
-	handler := func(signal string, data TestUniqueData) error {
+	handler := func(signal string, data TestUniqueData, metadata map[string]interface{}) error {
 		return nil
 	}
 	br.Handle(handler)
@@ -349,7 +349,7 @@ func BenchmarkUniqueBroadcast_ConcurrentBroadcast(b *testing.B) {
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			br.Broadcast("test")
+			br.Broadcast("test", nil)
 		}
 	})
 }
